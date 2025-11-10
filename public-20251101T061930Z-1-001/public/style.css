@@ -1,0 +1,32 @@
+body {
+  font-family: Arial, sans-serif;
+  text-align: center;
+  background: #f7f7f7;
+  color: #333;
+}
+h1 { margin-top: 20px; }
+.btn {
+  display: inline-block;
+  margin-top: 20px;
+  background: #007bff;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 5px;
+  text-decoration: none;
+}
+.gallery {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.card {
+  background: white;
+  margin: 10px;
+  padding: 10px;
+  box-shadow: 0 0 5px #999;
+}
+.card img {
+  width: 300px;
+  height: auto;
+  border-radius: 10px;
+}

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alerts - Theft Detection</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      color: #333;
+    }
+    .navbar {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .navbar h1 {
+      color: #667eea;
+      font-size: 1.5rem;
+    }
+    .nav-links {
+      display: flex;
+      gap: 1rem;
+    }
+    .nav-links a {
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      color: #333;
+      transition: all 0.3s;
+    }
+    .nav-links a:hover {
+      background: #667eea;
+      color: white;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+    }
+    .alerts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    .alert-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: transform 0.3s;
+    }
+    .alert-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+    .alert-card img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+    }
+    .alert-card-body {
+      padding: 1rem;
+    }
+    .alert-card-body h3 {
+      color: #667eea;
+      margin-bottom: 0.5rem;
+    }
+    .alert-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      color: #666;
+      margin: 0.5rem 0;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: bold;
+    }
+    .badge-sent {
+      background: #4ade80;
+      color: white;
+    }
+    .badge-pending {
+      background: #fbbf24;
+      color: white;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background: #667eea;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      margin-top: 0.5rem;
+    }
+    .btn-danger {
+      background: #ef4444;
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 2rem;
+    }
+    .pagination a, .pagination span {
+      padding: 0.5rem 1rem;
+      background: white;
+      border-radius: 5px;
+      text-decoration: none;
+      color: #333;
+    }
+    .pagination .active {
+      background: #667eea;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <h1>🚨 Alert History</h1>
+    <div class="nav-links">
+      <a href="/dashboard">Dashboard</a>
+      <a href="/home">Live Monitor</a>
+      <a href="/gallery">Gallery</a>
+      <a href="/alerts">Alerts</a>
+      <a href="/settings">Settings</a>
+      <a href="/faces">Faces</a>
+      <form action="/logout" method="POST" style="display: inline;">
+        <button type="submit" class="btn btn-danger" style="padding: 0.5rem 1rem;">Logout</button>
+      </form>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div style="background: white; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+      <h2>Total Alerts: <%= total %></h2>
+    </div>
+
+    <% if (alerts && alerts.length > 0) { %>
+      <div class="alerts-grid">
+        <% alerts.forEach(alert => { %>
+          <div class="alert-card">
+            <img src="<%= alert.image %>" alt="Alert Image">
+            <div class="alert-card-body">
+              <h3>Motion Detected</h3>
+              <div class="alert-meta">
+                <span>📅 <%= new Date(alert.detectedAt).toLocaleString() %></span>
+                <span class="badge <%= alert.isAlertSent ? 'badge-sent' : 'badge-pending' %>">
+                  <%= alert.isAlertSent ? 'Email Sent' : 'Pending' %>
+                </span>
+              </div>
+              <% if (alert.confidence) { %>
+                <p style="color: #666; font-size: 0.9rem;">Confidence: <%= alert.confidence %>%</p>
+              <% } %>
+              <button class="btn btn-danger" onclick="deleteAlert('<%= alert._id %>')">Delete</button>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+
+      <% if (totalPages > 1) { %>
+        <div class="pagination">
+          <% if (currentPage > 1) { %>
+            <a href="?page=<%= currentPage - 1 %>">Previous</a>
+          <% } %>
+          
+          <% for (let i = 1; i <= totalPages; i++) { %>
+            <% if (i === currentPage) { %>
+              <span class="active"><%= i %></span>
+            <% } else { %>
+              <a href="?page=<%= i %>"><%= i %></a>
+            <% } %>
+          <% } %>
+
+          <% if (currentPage < totalPages) { %>
+            <a href="?page=<%= currentPage + 1 %>">Next</a>
+          <% } %>
+        </div>
+      <% } %>
+    <% } else { %>
+      <div style="background: white; padding: 2rem; border-radius: 8px; text-align: center;">
+        <p style="font-size: 1.2rem; color: #666;">No alerts yet. Start monitoring to see alerts here.</p>
+        <a href="/home" class="btn" style="margin-top: 1rem;">Start Monitoring</a>
+      </div>
+    <% } %>
+  </div>
+
+  <script>
+    async function deleteAlert(id) {
+      if (!confirm('Are you sure you want to delete this alert?')) return;
+      
+      try {
+        const response = await fetch(`/api/capture/${id}`, {
+          method: 'DELETE'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          alert('Alert deleted successfully');
+          location.reload();
+        } else {
+          alert('Error deleting alert: ' + data.error);
+        }
+      } catch (error) {
+        alert('Error deleting alert');
+        console.error(error);
+      }
+    }
+  </script>
+</body>
+</html>
+

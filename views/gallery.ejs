@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gallery - Theft Detection</title>
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      color: #333;
+    }
+    .navbar {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .navbar h1 {
+      color: #667eea;
+      font-size: 1.5rem;
+    }
+    .nav-links {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .nav-links a {
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      color: #333;
+      transition: all 0.3s;
+    }
+    .nav-links a:hover {
+      background: #667eea;
+      color: white;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+    }
+    .stats-bar {
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    .gallery-item {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: transform 0.3s;
+      position: relative;
+    }
+    .gallery-item:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+    .gallery-item img {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      display: block;
+    }
+    .gallery-item-body {
+      padding: 1rem;
+    }
+    .gallery-item-body h3 {
+      color: #667eea;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+    .gallery-item-meta {
+      font-size: 0.85rem;
+      color: #666;
+      margin-bottom: 0.5rem;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background: #667eea;
+      color: white;
+      text-decoration: none;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s;
+    }
+    .btn:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
+    }
+    .btn-danger {
+      background: #ef4444;
+    }
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 2rem;
+    }
+    .pagination a, .pagination span {
+      padding: 0.5rem 1rem;
+      background: white;
+      border-radius: 5px;
+      text-decoration: none;
+      color: #333;
+    }
+    .pagination .active {
+      background: #667eea;
+      color: white;
+    }
+    .empty-state {
+      background: white;
+      padding: 3rem;
+      border-radius: 12px;
+      text-align: center;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <h1>📸 Image Gallery</h1>
+    <div class="nav-links">
+      <a href="/dashboard">Dashboard</a>
+      <a href="/home">Live Monitor</a>
+      <a href="/gallery">Gallery</a>
+      <a href="/alerts">Alerts</a>
+      <a href="/settings">Settings</a>
+      <a href="/faces">Faces</a>
+      <form action="/logout" method="POST" style="display: inline;">
+        <button type="submit" class="btn btn-danger" style="padding: 0.5rem 1rem;">Logout</button>
+      </form>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="stats-bar">
+      <h2 style="color: #667eea;">Total Images: <%= total %></h2>
+      <div>
+        <% if (totalPages > 1) { %>
+          <span style="color: #666;">Page <%= currentPage %> of <%= totalPages %></span>
+        <% } %>
+      </div>
+    </div>
+
+    <% if (captures && captures.length > 0) { %>
+      <div class="gallery-grid">
+        <% captures.forEach(capture => { %>
+          <div class="gallery-item" id="capture-<%= capture._id %>">
+            <img src="<%= capture.image %>" alt="Captured Image" onclick="viewImage('<%= capture.image %>')">
+            <div class="gallery-item-body">
+              <h3>Motion Detected</h3>
+              <div class="gallery-item-meta">
+                <p>📅 <%= new Date(capture.detectedAt || capture.createdAt).toLocaleString() %></p>
+                <% if (capture.confidence) { %>
+                  <p>📊 Confidence: <%= capture.confidence %>%</p>
+                <% } %>
+              </div>
+              <button class="btn btn-danger" onclick="deleteImage('<%= capture._id %>')" title="Delete this image">Delete</button>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+
+      <% if (totalPages > 1) { %>
+        <div class="pagination">
+          <% if (currentPage > 1) { %>
+            <a href="?page=<%= currentPage - 1 %>">Previous</a>
+          <% } %>
+          
+          <% for (let i = 1; i <= totalPages; i++) { %>
+            <% if (i === currentPage) { %>
+              <span class="active"><%= i %></span>
+            <% } else { %>
+              <a href="?page=<%= i %>"><%= i %></a>
+            <% } %>
+          <% } %>
+
+          <% if (currentPage < totalPages) { %>
+            <a href="?page=<%= currentPage + 1 %>">Next</a>
+          <% } %>
+        </div>
+      <% } %>
+    <% } else { %>
+      <div class="empty-state">
+        <h2 style="color: #667eea; margin-bottom: 1rem;">📷 No Images Yet</h2>
+        <p style="margin-bottom: 1.5rem;">Start monitoring to capture images here.</p>
+        <a href="/home" class="btn">Start Monitoring</a>
+      </div>
+    <% } %>
+  </div>
+
+  <!-- Image Modal -->
+  <div id="imageModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center;" onclick="closeModal()">
+    <img id="modalImage" src="" style="max-width: 90%; max-height: 90%; border-radius: 8px;">
+    <button onclick="closeModal()" style="position: absolute; top: 20px; right: 20px; background: white; border: none; padding: 0.5rem 1rem; border-radius: 5px; cursor: pointer; font-size: 1.5rem;">&times;</button>
+  </div>
+
+  <script>
+    function viewImage(src) {
+      document.getElementById('modalImage').src = src;
+      document.getElementById('imageModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('imageModal').style.display = 'none';
+    }
+
+    async function deleteImage(id) {
+      try {
+        const response = await fetch(`/api/capture/${id}`, {
+          method: 'DELETE'
+        });
+        const data = await response.json();
+        
+        if (data.success) {
+          const card = document.getElementById(`capture-${id}`);
+          if (card && card.parentNode) {
+            card.parentNode.removeChild(card);
+          }
+          
+          const grid = document.querySelector('.gallery-grid');
+          if (grid && grid.children.length === 0) {
+            location.reload();
+          }
+        } else {
+          alert('Error deleting image: ' + (data.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error(error);
+        alert('Error deleting image. Please try again.');
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login / Sign Up - Theft Detection</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 2rem;
+      color: #333;
+    }
+    .container {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 2.5rem;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      max-width: 400px;
+      width: 100%;
+    }
+    .container h2 {
+      color: #667eea;
+      text-align: center;
+      margin-bottom: 2rem;
+      font-size: 1.8rem;
+    }
+    .alert {
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      text-align: center;
+      font-size: 0.9rem;
+    }
+    .alert-error {
+      background: #fee;
+      color: #c33;
+      border: 1px solid #fcc;
+    }
+    .alert-success {
+      background: #efe;
+      color: #3c3;
+      border: 1px solid #cfc;
+    }
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #333;
+      font-weight: 500;
+      font-size: 0.9rem;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .form-group .error-msg {
+      color: #ef4444;
+      font-size: 0.85rem;
+      margin-top: 0.25rem;
+    }
+    .btn {
+      width: 100%;
+      padding: 0.75rem;
+      background: #667eea;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-bottom: 1rem;
+    }
+    .btn:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .divider {
+      text-align: center;
+      margin: 1.5rem 0;
+      position: relative;
+      color: #666;
+      font-size: 0.9rem;
+    }
+    .divider::before,
+    .divider::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      width: 40%;
+      height: 1px;
+      background: #e5e7eb;
+    }
+    .divider::before {
+      left: 0;
+    }
+    .divider::after {
+      right: 0;
+    }
+    .password-hint {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 0.25rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>🛡️ Theft Detection</h2>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>
+    <% if (typeof success !== 'undefined' && success) { %>
+      <div class="alert alert-success"><%= success %></div>
+    <% } %>
+
+    <!-- Sign Up Form -->
+    <form action="/signup" method="POST" id="signupForm">
+      <h3 style="color: #667eea; margin-bottom: 1rem; text-align: center;">Create Account</h3>
+      
+      <div class="form-group">
+        <label for="signup-name">Full Name</label>
+        <input type="text" id="signup-name" name="name" placeholder="Enter your name" required>
+        <% if (typeof signupErrors !== 'undefined' && signupErrors) { %>
+          <% signupErrors.forEach(err => { if(err.param === 'name') { %>
+            <span class="error-msg"><%= err.msg %></span>
+          <% }}) %>
+        <% } %>
+      </div>
+
+      <div class="form-group">
+        <label for="signup-email">Email Address</label>
+        <input type="email" id="signup-email" name="email" placeholder="Enter your email" required>
+        <% if (typeof signupErrors !== 'undefined' && signupErrors) { %>
+          <% signupErrors.forEach(err => { if(err.param === 'email') { %>
+            <span class="error-msg"><%= err.msg %></span>
+          <% }}) %>
+        <% } %>
+      </div>
+
+      <div class="form-group">
+        <label for="signup-password">Password</label>
+        <input type="password" id="signup-password" name="password" placeholder="Create a password" required>
+        <p class="password-hint">Must contain uppercase, lowercase, and number</p>
+        <% if (typeof signupErrors !== 'undefined' && signupErrors) { %>
+          <% signupErrors.forEach(err => { if(err.param === 'password') { %>
+            <span class="error-msg"><%= err.msg %></span>
+          <% }}) %>
+        <% } %>
+      </div>
+
+      <button type="submit" class="btn">Sign Up</button>
+    </form>
+
+    <div class="divider">OR</div>
+
+    <!-- Login Form -->
+    <form action="/login" method="POST" id="loginForm">
+      <h3 style="color: #667eea; margin-bottom: 1rem; text-align: center;">Login</h3>
+      
+      <div class="form-group">
+        <label for="login-email">Email Address</label>
+        <input type="email" id="login-email" name="email" placeholder="Enter your email" required>
+        <% if (typeof loginErrors !== 'undefined' && loginErrors) { %>
+          <% loginErrors.forEach(err => { if(err.param === 'email') { %>
+            <span class="error-msg"><%= err.msg %></span>
+          <% }}) %>
+        <% } %>
+      </div>
+
+      <div class="form-group">
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" name="password" placeholder="Enter your password" required>
+        <% if (typeof loginErrors !== 'undefined' && loginErrors) { %>
+          <% loginErrors.forEach(err => { if(err.param === 'password') { %>
+            <span class="error-msg"><%= err.msg %></span>
+          <% }}) %>
+        <% } %>
+      </div>
+
+      <button type="submit" class="btn">Login</button>
+    </form>
+  </div>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Gallery</title>
+  <style>
+    body { background: #111; color: #fff; text-align: center; font-family: sans-serif; }
+    .gallery { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 20px; }
+    .gallery img { width: 200px; border: 3px solid #00bfff; border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <h1>📸 Captured Images</h1>
+  <div class="gallery">
+    <% if (captures.length === 0) { %>
+      <p>No captures yet!</p>
+    <% } else { %>
+      <% captures.forEach(capture => { %>
+        <img src="<%= capture.image %>" alt="Captured Image" />
+      <% }) %>
+    <% } %>
+  </div>
+  <button onclick="window.location.href='/home'">🏠 Back to Home</button>
+</body>
+</html>

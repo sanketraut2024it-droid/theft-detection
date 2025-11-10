@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Face Management - Theft Detection</title>
+  <link rel="stylesheet" href="/style.css">
+  <!-- Load face-api.js with fallback CDN sources -->
+  <script>
+    // Try to load face-api.js from multiple CDN sources
+    (function() {
+      const sources = [
+        'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.6.9/dist/face-api.min.js',
+        'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js',
+        'https://unpkg.com/face-api.js@0.22.2/dist/face-api.min.js'
+      ];
+      
+      let loaded = false;
+      let currentIndex = 0;
+      
+      function loadScript(src) {
+        return new Promise((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = src;
+          script.onload = () => {
+            console.log('✅ face-api.js loaded from:', src);
+            loaded = true;
+            resolve();
+          };
+          script.onerror = () => {
+            console.warn('❌ Failed to load from:', src);
+            reject();
+          };
+          document.head.appendChild(script);
+        });
+      }
+      
+      async function tryLoad() {
+        while (!loaded && currentIndex < sources.length) {
+          try {
+            await loadScript(sources[currentIndex]);
+            break;
+          } catch (error) {
+            currentIndex++;
+            if (currentIndex >= sources.length) {
+              console.error('❌ All face-api.js CDN sources failed');
+            }
+          }
+        }
+      }
+      
+      tryLoad();
+    })();
+  </script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      min-height: 100vh;
+      color: #333;
+    }
+    .navbar {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 1rem 2rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .navbar h1 {
+      color: #667eea;
+      font-size: 1.5rem;
+    }
+    .nav-links {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .nav-links a {
+      text-decoration: none;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      color: #333;
+      transition: all 0.3s;
+    }
+    .nav-links a:hover {
+      background: #667eea;
+      color: white;
+    }
+    .container {
+      max-width: 1200px;
+      margin: 2rem auto;
+      padding: 0 2rem;
+    }
+    .card {
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-bottom: 1.5rem;
+    }
+    .card h2 {
+      color: #667eea;
+      margin-bottom: 1.5rem;
+      border-bottom: 2px solid #667eea;
+      padding-bottom: 0.5rem;
+    }
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #333;
+      font-weight: 500;
+    }
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.75rem;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: border-color 0.3s;
+    }
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .video-container {
+      position: relative;
+      margin: 1rem 0;
+    }
+    video {
+      width: 100%;
+      max-width: 640px;
+      border: 4px solid #667eea;
+      border-radius: 12px;
+      background: #000;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    .btn {
+      background: #667eea;
+      color: white;
+      padding: 0.75rem 2rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin: 0.5rem 0.5rem 0.5rem 0;
+    }
+    .btn:hover {
+      background: #5568d3;
+      transform: translateY(-2px);
+    }
+    .btn-danger {
+      background: #ef4444;
+    }
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+    .btn-success {
+      background: #4ade80;
+    }
+    .btn-success:hover {
+      background: #22c55e;
+    }
+    .faces-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-top: 1.5rem;
+    }
+    .face-card {
+      background: #f3f4f6;
+      padding: 1rem;
+      border-radius: 8px;
+      text-align: center;
+      position: relative;
+    }
+    .face-card img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+    }
+    .face-card h3 {
+      color: #667eea;
+      margin-bottom: 0.25rem;
+      font-size: 1rem;
+    }
+    .face-card p {
+      color: #666;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+    }
+    .alert {
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .alert-success {
+      background: #d1fae5;
+      color: #059669;
+    }
+    .alert-error {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+    .status {
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      display: inline-block;
+      margin: 0.5rem 0;
+      font-weight: bold;
+    }
+    .status-loading {
+      background: #fbbf24;
+      color: white;
+    }
+    .status-ready {
+      background: #4ade80;
+      color: white;
+    }
+    .status-error {
+      background: #ef4444;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <h1>👤 Face Management</h1>
+    <div class="nav-links">
+      <a href="/dashboard">Dashboard</a>
+      <a href="/home">Live Monitor</a>
+      <a href="/gallery">Gallery</a>
+      <a href="/alerts">Alerts</a>
+      <a href="/settings">Settings</a>
+      <a href="/faces">Faces</a>
+      <form action="/logout" method="POST" style="display: inline;">
+        <button type="submit" class="btn btn-danger" style="padding: 0.5rem 1rem;">Logout</button>
+      </form>
+    </div>
+  </nav>
+
+  <div class="container">
+    <% if (success) { %>
+      <div class="alert alert-success"><%= success %></div>
+    <% } %>
+    <% if (error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>
+
+    <div class="card">
+      <h2>➕ Add New Face</h2>
+      <p style="color: #666; margin-bottom: 1rem;">Capture a clear photo of the person's face to add them to the recognition database.</p>
+      
+      <div class="video-container">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas" style="display: none;"></canvas>
+      </div>
+
+      <div id="faceStatus" class="status status-loading">Loading face detection models...</div>
+      
+      <div id="deepFaceStatus" style="margin: 1rem 0; padding: 1rem; background: #f3f4f6; border-radius: 8px; display: none;">
+        <div id="deepFaceInfo" style="margin-bottom: 0.5rem;"></div>
+        <label style="display: flex; align-items: center; cursor: pointer;">
+          <input type="checkbox" id="useDeepFace" style="margin-right: 0.5rem; width: 20px; height: 20px; cursor: pointer;">
+          <span style="color: #333; font-weight: 500;">Use DeepFace for enhanced recognition</span>
+        </label>
+        <p style="color: #666; font-size: 0.9rem; margin-top: 0.5rem; margin-left: 1.75rem;">
+          DeepFace provides more accurate face recognition with age, gender, and emotion analysis
+        </p>
+      </div>
+
+      <form id="addFaceForm">
+        <div class="form-group">
+          <label for="faceName">Person Name *</label>
+          <input type="text" id="faceName" name="name" placeholder="Enter person's name" required>
+        </div>
+
+        <div class="form-group">
+          <label for="faceDescription">Description (Optional)</label>
+          <textarea id="faceDescription" name="description" rows="3" placeholder="Add any notes about this person"></textarea>
+        </div>
+
+        <button type="button" class="btn btn-success" id="captureBtn">📸 Capture Face</button>
+        <button type="submit" class="btn" id="saveBtn" disabled>💾 Save to Database</button>
+      </form>
+
+      <div id="preview" style="margin-top: 1rem; display: none;">
+        <p style="font-weight: bold; margin-bottom: 0.5rem;">Preview:</p>
+        <img id="previewImage" style="max-width: 200px; border: 3px solid #667eea; border-radius: 8px;">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📋 Known Faces (<%= faces ? faces.length : 0 %>)</h2>
+      
+      <% if (faces && faces.length > 0) { %>
+        <div class="faces-grid">
+          <% faces.forEach(face => { %>
+            <div class="face-card">
+              <img src="<%= face.image %>" alt="<%= face.name %>">
+              <h3><%= face.name %></h3>
+              <% if (face.description) { %>
+                <p><%= face.description %></p>
+              <% } %>
+              <p style="color: #999; font-size: 0.8rem;">
+                <% if (face.lastSeen) { %>
+                  Last seen: <%= new Date(face.lastSeen).toLocaleString() %>
+                <% } else { %>
+                  Never seen
+                <% } %>
+              </p>
+              <button class="btn btn-danger" onclick="deleteFace('<%= face._id %>', '<%= face.name %>')">Delete</button>
+            </div>
+          <% }) %>
+        </div>
+      <% } else { %>
+        <p style="color: #666; text-align: center; padding: 2rem;">No faces in database yet. Add faces above to enable recognition.</p>
+      <% } %>
+    </div>
+  </div>
+
+  <script>
+    let modelsLoaded = false;
+    let currentDescriptor = null;
+    let currentImage = null;
+
+    // Wait for face-api.js to be loaded
+    async function waitForFaceAPI() {
+      let attempts = 0;
+      const maxAttempts = 100; // 10 seconds max wait (increased for slower connections)
+      
+      while (typeof faceapi === 'undefined' && attempts < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      
+      if (typeof faceapi === 'undefined') {
+        console.error('face-api.js not loaded after', maxAttempts * 100, 'ms');
+        return false;
+      }
+      
+      // Additional check to ensure faceapi is fully initialized
+      if (!faceapi.nets) {
+        console.warn('face-api.js loaded but nets not available, waiting...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (!faceapi.nets) {
+          console.error('face-api.js nets still not available after additional wait');
+          return false;
+        }
+      }
+      
+      console.log('✅ face-api.js is ready');
+      return true;
+    }
+
+    // Load face-api.js models with retry logic
+    async function loadModels() {
+      const statusEl = document.getElementById('faceStatus');
+      statusEl.textContent = 'Loading face detection library...';
+      statusEl.className = 'status status-loading';
+
+      // First, wait for face-api.js to be available
+      const faceAPILoaded = await waitForFaceAPI();
+      
+      if (!faceAPILoaded) {
+        console.error('face-api.js library not loaded');
+        statusEl.textContent = '❌ Face detection library not available. Please refresh the page.';
+        statusEl.className = 'status status-error';
+        startCamera();
+        return;
+      }
+
+      statusEl.textContent = 'Loading face detection models...';
+      statusEl.className = 'status status-loading';
+
+      // Try multiple CDN sources with correct paths
+      const cdnSources = [
+        {
+          base: 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.6.9/model',
+          name: 'jsDelivr (vladmandic fork)'
+        },
+        {
+          base: 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights',
+          name: 'jsDelivr (original)'
+        },
+        {
+          base: 'https://unpkg.com/face-api.js@0.22.2/weights',
+          name: 'unpkg'
+        },
+        {
+          base: 'https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights',
+          name: 'GitHub raw'
+        }
+      ];
+
+      let loaded = false;
+      let lastError = null;
+
+      for (const cdnSource of cdnSources) {
+        try {
+          console.log(`Trying to load models from: ${cdnSource.name} (${cdnSource.base})`);
+          
+          // Try loading with TinyFaceDetector first (smaller, faster to load)
+          try {
+            await faceapi.nets.tinyFaceDetector.loadFromUri(cdnSource.base);
+            console.log('✅ TinyFaceDetector loaded');
+          } catch (tinyError) {
+            console.warn('TinyFaceDetector failed:', tinyError.message);
+            throw new Error('TinyFaceDetector failed');
+          }
+
+          // Load essential models
+          const loadPromise = Promise.all([
+            // Face landmarks for better recognition
+            faceapi.nets.faceLandmark68Net.loadFromUri(cdnSource.base).catch(err => {
+              console.warn('FaceLandmark68Net failed, continuing...');
+              return null;
+            }),
+            // Face recognition model (generates 128-dimensional face descriptors)
+            faceapi.nets.faceRecognitionNet.loadFromUri(cdnSource.base).catch(err => {
+              console.warn('FaceRecognitionNet failed, continuing...');
+              return null;
+            })
+          ]);
+
+          // Add timeout of 60 seconds (models can be large)
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Model loading timeout')), 60000)
+          );
+
+          await Promise.race([loadPromise, timeoutPromise]);
+
+          // Try to load SSD MobileNet V1 (optional, for better accuracy)
+          try {
+            await faceapi.nets.ssdMobilenetv1.loadFromUri(cdnSource.base);
+            console.log('✅ SSD MobileNet V1 loaded');
+          } catch (ssdError) {
+            console.warn('SSD MobileNet V1 failed to load (optional):', ssdError.message);
+          }
+
+          // Try to load age/gender models (optional)
+          try {
+            await faceapi.nets.ageGenderNet.loadFromUri(cdnSource.base);
+            console.log('✅ Age/Gender models loaded');
+          } catch (ageError) {
+            console.warn('Age/Gender models failed to load (optional):', ageError.message);
+          }
+
+          modelsLoaded = true;
+          statusEl.textContent = '✅ Models loaded! Ready to detect faces';
+          statusEl.className = 'status status-ready';
+          console.log('✅ Face detection models loaded successfully from', cdnSource.name);
+          loaded = true;
+          break;
+        } catch (error) {
+          console.warn(`Failed to load from ${cdnSource.name}:`, error.message);
+          lastError = error;
+          continue;
+        }
+      }
+
+      if (!loaded) {
+        console.error('All CDN sources failed. Last error:', lastError);
+        statusEl.textContent = '⚠️ Models unavailable. Using DeepFace backend for face detection.';
+        statusEl.className = 'status status-error';
+        // Still start camera - can use DeepFace instead
+      }
+
+      startCamera();
+    }
+
+    // Start camera
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const video = document.getElementById('video');
+        video.srcObject = stream;
+      } catch (error) {
+        console.error('Camera error:', error);
+        alert('Error accessing camera: ' + error.message);
+      }
+    }
+
+    // Capture face
+    document.getElementById('captureBtn').addEventListener('click', async () => {
+      if (!modelsLoaded) {
+        alert('Face detection models are still loading. Please wait...');
+        return;
+      }
+
+      const video = document.getElementById('video');
+      const canvas = document.getElementById('canvas');
+      const ctx = canvas.getContext('2d');
+
+      // Set canvas dimensions
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      // Draw video frame to canvas
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+      // Detect faces - try multiple detection methods
+      let detections = [];
+      
+      try {
+        // Try SSD MobileNet V1 first (if loaded)
+        if (faceapi.nets.ssdMobilenetv1 && faceapi.nets.ssdMobilenetv1.isLoaded) {
+          try {
+            detections = await faceapi
+              .detectAllFaces(video, new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+              .withFaceLandmarks()
+              .withFaceDescriptors();
+          } catch (ssdError) {
+            console.warn('SSD MobileNet detection failed, trying TinyFaceDetector:', ssdError);
+          }
+        }
+        
+        // Fallback to TinyFaceDetector if SSD failed or not loaded
+        if (detections.length === 0 && faceapi.nets.tinyFaceDetector && faceapi.nets.tinyFaceDetector.isLoaded) {
+          try {
+            detections = await faceapi
+              .detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }))
+              .withFaceLandmarks()
+              .withFaceDescriptors();
+          } catch (tinyError) {
+            console.warn('TinyFaceDetector failed:', tinyError);
+          }
+        }
+        
+        // Try with age/gender if available
+        if (detections.length > 0 && faceapi.nets.ageGenderNet && faceapi.nets.ageGenderNet.isLoaded) {
+          try {
+            detections = await faceapi
+              .detectAllFaces(video, detections[0].detection ? 
+                new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.5 }) :
+                new faceapi.SsdMobilenetv1Options({ minConfidence: 0.5 }))
+              .withFaceLandmarks()
+              .withFaceDescriptors()
+              .withAgeAndGender();
+          } catch (ageError) {
+            console.warn('Age/Gender detection failed, using basic detection:', ageError);
+          }
+        }
+      } catch (error) {
+        console.error('Face detection error:', error);
+        alert('Face detection failed. Please try again or use DeepFace option.');
+        return;
+      }
+
+      if (detections.length === 0) {
+        alert('No face detected. Please ensure your face is clearly visible.');
+        return;
+      }
+
+      if (detections.length > 1) {
+        alert('Multiple faces detected. Please ensure only one face is visible.');
+        return;
+      }
+
+      // Get the first (and only) face
+      const detection = detections[0];
+      currentDescriptor = Array.from(detection.descriptor);
+      currentImage = canvas.toDataURL('image/jpeg');
+
+      // Extract age and gender if available
+      let ageGenderInfo = '';
+      if (detection.age !== undefined && detection.gender !== undefined) {
+        ageGenderInfo = `\nDetected: ${detection.gender} (Age: ~${Math.round(detection.age)})`;
+      }
+
+      // Show preview
+      document.getElementById('previewImage').src = currentImage;
+      document.getElementById('preview').style.display = 'block';
+      document.getElementById('saveBtn').disabled = false;
+
+      // Draw detection box and landmarks on canvas
+      const box = detection.detection.box;
+      ctx.strokeStyle = '#00ff00';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(box.x, box.y, box.width, box.height);
+      
+      // Draw landmarks
+      if (detection.landmarks) {
+        ctx.fillStyle = '#00ff00';
+        detection.landmarks.positions.forEach(point => {
+          ctx.beginPath();
+          ctx.arc(point.x, point.y, 2, 0, 2 * Math.PI);
+          ctx.fill();
+        });
+      }
+      
+      // Display age and gender info
+      if (ageGenderInfo) {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '16px Arial';
+        ctx.fillText(ageGenderInfo.trim(), box.x, box.y - 10);
+      }
+      
+      alert(`Face captured successfully!${ageGenderInfo}\nFill in the name and click Save.`);
+    });
+
+    // Save face to database
+    document.getElementById('addFaceForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const name = document.getElementById('faceName').value.trim();
+      if (!name) {
+        alert('Please enter a name.');
+        return;
+      }
+
+      const description = document.getElementById('faceDescription').value.trim();
+      const useDeepFace = document.getElementById('useDeepFace').checked;
+      const currentImage = document.getElementById('previewImage').src;
+
+      // If using DeepFace, we don't need the descriptor from face-api.js
+      // DeepFace will extract it from the image
+      if (useDeepFace) {
+        if (!currentImage) {
+          alert('Please capture a face first.');
+          return;
+        }
+
+        // Show loading
+        const saveBtn = document.getElementById('saveBtn');
+        const originalText = saveBtn.textContent;
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Processing with DeepFace...';
+
+        try {
+          const response = await fetch('/api/faces', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: name,
+              image: currentImage,
+              description: description,
+              useDeepFace: true
+            })
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            let message = 'Face added successfully!';
+            if (data.face.analysis) {
+              const analysis = data.face.analysis;
+              message += `\n\nAnalysis:\n`;
+              if (analysis.age) message += `Age: ~${analysis.age} years\n`;
+              if (analysis.gender) message += `Gender: ${analysis.gender}\n`;
+            }
+            alert(message);
+            location.reload();
+          } else {
+            alert('Error: ' + data.error);
+            saveBtn.disabled = false;
+            saveBtn.textContent = originalText;
+          }
+        } catch (error) {
+          console.error('Error saving face:', error);
+          alert('Error saving face. Please try again.');
+          saveBtn.disabled = false;
+          saveBtn.textContent = originalText;
+        }
+      } else {
+        // Use face-api.js method
+        if (!currentDescriptor || !currentImage) {
+          alert('Please capture a face first.');
+          return;
+        }
+
+        try {
+          const response = await fetch('/api/faces', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: name,
+              descriptor: currentDescriptor,
+              image: currentImage,
+              description: description,
+              useDeepFace: false
+            })
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            alert('Face added successfully!');
+            location.reload();
+          } else {
+            alert('Error: ' + data.error);
+          }
+        } catch (error) {
+          console.error('Error saving face:', error);
+          alert('Error saving face. Please try again.');
+        }
+      }
+    });
+
+    // Delete face
+    async function deleteFace(id, name) {
+      if (!confirm(`Are you sure you want to delete ${name} from the database?`)) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/faces/${id}`, {
+          method: 'DELETE'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          alert('Face deleted successfully!');
+          location.reload();
+        } else {
+          alert('Error: ' + data.error);
+        }
+      } catch (error) {
+        console.error('Error deleting face:', error);
+        alert('Error deleting face. Please try again.');
+      }
+    }
+
+    // Check DeepFace availability
+    async function checkDeepFace() {
+      try {
+        const response = await fetch('/api/deepface/health');
+        const data = await response.json();
+        
+        const deepFaceStatus = document.getElementById('deepFaceStatus');
+        const deepFaceInfo = document.getElementById('deepFaceInfo');
+        
+        if (data.success && data.available) {
+          deepFaceStatus.style.display = 'block';
+          deepFaceInfo.innerHTML = `
+            <div style="color: #059669; font-weight: bold; margin-bottom: 0.5rem;">
+              ✅ DeepFace is available (Model: ${data.model || 'VGG-Face'}, Detector: ${data.detector || 'opencv'})
+            </div>
+          `;
+          document.getElementById('useDeepFace').disabled = false;
+        } else {
+          deepFaceStatus.style.display = 'block';
+          deepFaceInfo.innerHTML = `
+            <div style="color: #dc2626; font-weight: bold; margin-bottom: 0.5rem;">
+              ⚠️ DeepFace is not available. Please start the Python backend server.
+            </div>
+            <p style="color: #666; font-size: 0.85rem; margin-top: 0.25rem;">
+              Run: <code style="background: #e5e7eb; padding: 0.2rem 0.4rem; border-radius: 4px;">python python_api.py</code>
+            </p>
+          `;
+          document.getElementById('useDeepFace').disabled = true;
+        }
+      } catch (error) {
+        console.error('Error checking DeepFace:', error);
+        const deepFaceStatus = document.getElementById('deepFaceStatus');
+        deepFaceStatus.style.display = 'block';
+        document.getElementById('deepFaceInfo').innerHTML = `
+          <div style="color: #dc2626; font-weight: bold; margin-bottom: 0.5rem;">
+            ⚠️ DeepFace is not available
+          </div>
+        `;
+        document.getElementById('useDeepFace').disabled = true;
+      }
+    }
+
+    // Initialize on page load
+    window.addEventListener('load', () => {
+      // Wait a bit for face-api.js script to fully load
+      setTimeout(() => {
+        loadModels();
+        checkDeepFace(); // Check DeepFace availability
+      }, 500);
+    });
+  </script>
+</body>
+</html>
+
